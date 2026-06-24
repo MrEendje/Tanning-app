@@ -13,7 +13,7 @@ const GOALS = {
   maintain: 'Onderhouden',
 }
 
-export default function Profile({ profile, email, tab, setTab, onReset, onToggleSound, onLogout }) {
+export default function Profile({ profile, email, tab, setTab, onReset, onToggleSound, onLogout, onOpenSettings }) {
   const soundOn = profile.sound !== false
   const st = skinType(profile.skinId)
   const allBadges = Object.keys(BADGES)
@@ -35,22 +35,54 @@ export default function Profile({ profile, email, tab, setTab, onReset, onToggle
         </div>
 
         {/* skin profile */}
-        <div className="glass rounded-[2rem] p-5 mt-4 flex items-center gap-4">
+        <button
+          onClick={onOpenSettings}
+          className="glass rounded-[2rem] p-5 mt-4 flex items-center gap-4 w-full text-left active:scale-[0.99] transition"
+        >
           <div
-            className="w-14 h-14 rounded-2xl border-4 border-white shadow"
+            className="w-14 h-14 rounded-2xl border-4 border-white shadow shrink-0"
             style={{ backgroundColor: st.tint }}
           />
-          <div>
+          <div className="flex-1">
             <p className="font-display font-bold text-cocoa">Huidtype {st.label}</p>
             <p className="text-sm text-taupe">{st.desc}</p>
           </div>
-        </div>
+          <span className="text-taupe">✏️</span>
+        </button>
 
         {/* goal */}
-        <div className="glass rounded-2xl p-4 mt-4 flex items-center justify-between">
+        <button
+          onClick={onOpenSettings}
+          className="glass rounded-2xl p-4 mt-4 flex items-center justify-between w-full active:scale-[0.99] transition"
+        >
           <span className="text-taupe font-semibold text-sm">🎯 Doel</span>
-          <span className="font-display font-bold text-cocoa">{GOALS[profile.goal] || '—'}</span>
-        </div>
+          <span className="font-display font-bold text-cocoa flex items-center gap-2">
+            {GOALS[profile.goal] || '—'} <span className="text-taupe">✏️</span>
+          </span>
+        </button>
+
+        {/* location */}
+        <button
+          onClick={onOpenSettings}
+          className="glass rounded-2xl p-4 mt-3 flex items-center justify-between w-full active:scale-[0.99] transition"
+        >
+          <span className="text-taupe font-semibold text-sm">📍 Locatie</span>
+          <span className="font-display font-bold text-cocoa flex items-center gap-2 max-w-[200px] truncate">
+            {profile.location?.mode === 'manual'
+              ? profile.location.name || 'Handmatig'
+              : 'Automatisch (GPS)'}{' '}
+            <span className="text-taupe">✏️</span>
+          </span>
+        </button>
+
+        {/* full settings */}
+        <button
+          onClick={onOpenSettings}
+          className="glass rounded-2xl p-4 mt-3 flex items-center justify-between w-full active:scale-[0.99] transition"
+        >
+          <span className="text-taupe font-semibold text-sm">⚙️ Alle instellingen</span>
+          <span className="text-taupe">›</span>
+        </button>
 
         {/* sound toggle */}
         <button

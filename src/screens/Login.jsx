@@ -45,6 +45,7 @@ export default function Login() {
       await signInWithPopup(auth, new GoogleAuthProvider())
       sound.success()
     } catch (err) {
+      console.error('[Sunny] Google sign-in failed:', err.code, err.message)
       setError(authErrorMessage(err.code))
     } finally {
       setBusy(false)

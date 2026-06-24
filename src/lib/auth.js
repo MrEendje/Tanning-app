@@ -23,8 +23,13 @@ export function authErrorMessage(code) {
     'auth/email-already-in-use': 'Er bestaat al een account met dit e-mailadres.',
     'auth/weak-password': 'Kies een wachtwoord van minstens 6 tekens.',
     'auth/popup-closed-by-user': 'Inloggen geannuleerd.',
+    'auth/cancelled-popup-request': 'Inloggen geannuleerd.',
+    'auth/popup-blocked': 'De pop-up werd geblokkeerd. Sta pop-ups toe of probeer opnieuw.',
+    'auth/unauthorized-domain': 'Dit domein is niet toegestaan in Firebase. Voeg het toe bij Authentication → Settings → Authorized domains.',
+    'auth/operation-not-allowed': 'Google-inloggen staat uit in Firebase. Zet het aan bij Authentication → Sign-in method.',
+    'auth/account-exists-with-different-credential': 'Je hebt al een account met dit e-mailadres via een andere methode.',
     'auth/too-many-requests': 'Te veel pogingen. Probeer het later opnieuw.',
     'auth/network-request-failed': 'Geen verbinding. Check je internet.',
   }
-  return map[code] || 'Er ging iets mis. Probeer het opnieuw.'
+  return map[code] || `Er ging iets mis (${code || 'onbekend'}). Probeer het opnieuw.`
 }

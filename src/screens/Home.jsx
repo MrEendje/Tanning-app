@@ -3,22 +3,27 @@ import { motion } from 'framer-motion'
 import UVGauge from '../components/UVGauge'
 import Sunny from '../components/Sunny'
 import TopBar from '../components/TopBar'
-import { fetchUV, getLocation, safeMinutes, adviceFor, skinType } from '../lib/uv'
+import { fetchUV, resolveCoords, safeMinutes, adviceFor, skinType } from '../lib/uv'
 import { sound } from '../lib/sound'
 
-export default function Home({ profile, onStartSession, onOpenSelfTan }) {
+export default function Home({ profile, onStartSession, onOpenSelfTan, onOpenSettings }) {
   const [weather, setWeather] = useState(null)
   const [status, setStatus] = useState('loading') // loading | ok | fallback
   const [place, setPlace] = useState('Jouw locatie')
+  const locMode = profile.location?.mode
+  const locLat = profile.location?.lat
+  const locLon = profile.location?.lon
 
   useEffect(() => {
     let cancelled = false
+    setStatus('loading')
     async function go() {
       try {
-        const { lat, lon } = await getLocation()
+        const { lat, lon, name } = await resolveCoords(profile.location)
         const w = await fetchUV(lat, lon)
         if (!cancelled) {
           setWeather(w)
+          setPlace(name)
           setStatus('ok')
         }
       } catch {
@@ -34,7 +39,8 @@ export default function Home({ profile, onStartSession, onOpenSelfTan }) {
     return () => {
       cancelled = true
     }
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locMode, locLat, locLon])
 
   const uv = weather?.uv ?? 0
   const minutes = safeMinutes(profile.skinId, uv, profile.caution)
@@ -53,9 +59,16 @@ export default function Home({ profile, onStartSession, onOpenSelfTan }) {
         <div className="flex items-center justify-between mt-4">
           <div>
             <p className="text-taupe text-sm font-semibold">{greeting()}</p>
-            <h1 className="font-display text-2xl font-extrabold text-cocoa flex items-center gap-2">
-              📍 {place}
-            </h1>
+            <button
+              onClick={() => {
+                sound.tap()
+                onOpenSettings()
+              }}
+              className="font-display text-2xl font-extrabold text-cocoa flex items-center gap-1 active:scale-95 transition max-w-[230px]"
+            >
+              📍 <span className="truncate">{place}</span>
+              <span className="text-base text-taupe">✏️</span>
+            </button>
           </div>
           {weather && (
             <div className="text-right">
@@ -160,10 +173,21 @@ export default function Home({ profile, onStartSession, onOpenSelfTan }) {
           <span className="text-taupe">›</span>
         </button>
 
-        {status === 'fallback' && canTan && (
-          <p className="text-center text-xs text-taupe mt-4">
-            Locatie uit — dit is een schatting. Zet locatie aan voor echte UV-data.
-          </p>
+        {status === 'fallback' && (
+          <div className="mt-4 text-center">
+            <p className="text-xs text-taupe">
+              Geen GPS — dit is een schatting. Geen zin om je locatie te delen?
+            </p>
+            <button
+              onClick={() => {
+                sound.tap()
+                onOpenSettings()
+              }}
+              className="text-sm font-bold text-sun-action mt-1 active:scale-95 transition"
+            >
+              📍 Stel je stad handmatig in
+            </button>
+          </div>
         )}
       </div>
 

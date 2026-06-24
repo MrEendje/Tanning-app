@@ -2,19 +2,23 @@ import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
-import { fetchForecast, getLocation, uvColor, uvLabel } from '../lib/uv'
+import { fetchForecast, resolveCoords, uvColor, uvLabel } from '../lib/uv'
 
 const DAYS = ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za']
 
 export default function Forecast({ profile, tab, setTab }) {
   const [data, setData] = useState(null)
   const [status, setStatus] = useState('loading')
+  const locMode = profile.location?.mode
+  const locLat = profile.location?.lat
+  const locLon = profile.location?.lon
 
   useEffect(() => {
     let cancelled = false
+    setStatus('loading')
     async function go() {
       try {
-        const { lat, lon } = await getLocation()
+        const { lat, lon } = await resolveCoords(profile.location)
         const f = await fetchForecast(lat, lon)
         if (!cancelled) {
           setData(f)
@@ -31,7 +35,8 @@ export default function Forecast({ profile, tab, setTab }) {
     return () => {
       cancelled = true
     }
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locMode, locLat, locLon])
 
   const hourly = (data?.todayHourly || []).filter((h) => h.hour >= 6 && h.hour <= 21)
   const peak = hourly.reduce((a, h) => (h.uv > (a?.uv ?? -1) ? h : a), null)

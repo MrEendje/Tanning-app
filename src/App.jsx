@@ -8,6 +8,7 @@ import Home from './screens/Home'
 import Forecast from './screens/Forecast'
 import SessionSetup from './screens/SessionSetup'
 import SelfTan from './screens/SelfTan'
+import Settings from './screens/Settings'
 import Session from './screens/Session'
 import Progress from './screens/Progress'
 import Profile from './screens/Profile'
@@ -59,6 +60,7 @@ function AuthedApp({ user }) {
   const [session, setSession] = useState(null) // active session
   const [reward, setReward] = useState(null) // celebration overlay
   const [selfTanOpen, setSelfTanOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   // keep the sound engine in sync with the user's preference
   useEffect(() => {
@@ -165,6 +167,7 @@ function AuthedApp({ user }) {
                 profile={profile}
                 onStartSession={openSetup}
                 onOpenSelfTan={() => setSelfTanOpen(true)}
+                onOpenSettings={() => setSettingsOpen(true)}
               />
               <BottomNav tab={tab} setTab={setTab} />
             </>
@@ -177,6 +180,7 @@ function AuthedApp({ user }) {
               email={user.email}
               tab={tab}
               setTab={setTab}
+              onOpenSettings={() => setSettingsOpen(true)}
               onToggleSound={() => {
                 const next = profile.sound === false
                 setSoundEnabled(next)
@@ -201,6 +205,13 @@ function AuthedApp({ user }) {
       <AnimatePresence>
         {selfTanOpen && (
           <SelfTan profile={profile} update={update} onClose={() => setSelfTanOpen(false)} />
+        )}
+      </AnimatePresence>
+
+      {/* settings modal */}
+      <AnimatePresence>
+        {settingsOpen && (
+          <Settings profile={profile} update={update} onClose={() => setSettingsOpen(false)} />
         )}
       </AnimatePresence>
 

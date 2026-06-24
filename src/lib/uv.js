@@ -105,3 +105,33 @@ export function getLocation() {
     )
   })
 }
+
+// Search a city by name (Open-Meteo geocoding, free, no key).
+export async function geocodeCity(name) {
+  const q = name.trim()
+  if (q.length < 2) return []
+  const url =
+    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}` +
+    `&count=6&language=nl&format=json`
+  const res = await fetch(url)
+  if (!res.ok) return []
+  const data = await res.json()
+  return (data.results || []).map((r) => ({
+    name: r.name,
+    admin: r.admin1 || '',
+    country: r.country || '',
+    lat: r.latitude,
+    lon: r.longitude,
+    label: [r.name, r.admin1, r.country].filter(Boolean).join(', '),
+  }))
+}
+
+// Resolve coordinates for the user's chosen location setting.
+// manual → stored coords; otherwise fall back to device geolocation.
+export async function resolveCoords(location) {
+  if (location?.mode === 'manual' && location.lat != null && location.lon != null) {
+    return { lat: location.lat, lon: location.lon, name: location.name || 'Gekozen locatie', manual: true }
+  }
+  const { lat, lon } = await getLocation()
+  return { lat, lon, name: 'Jouw locatie', manual: false }
+}

@@ -10,6 +10,7 @@ export const defaultProfile = {
   skinId: 3,
   goal: 'glow',
   caution: 1, // adapts to burn history: <1 = more careful
+  location: { mode: 'auto', lat: null, lon: null, name: '' }, // 'auto' = GPS, 'manual' = chosen city
   xp: 0,
   level: 1,
   streak: 0,
@@ -31,8 +32,8 @@ export function nextCaution(profile, burned) {
 
 export const XP_PER_LEVEL = 100
 
-// Old localStorage profile (used once to migrate existing progress into the cloud).
-function loadLocal() {
+// Pre-auth localStorage profile (used once to migrate old progress into an account).
+function loadLegacy() {
   try {
     const raw = localStorage.getItem(KEY)
     if (!raw) return null
@@ -42,8 +43,29 @@ function loadLocal() {
   }
 }
 
-// Firestore-backed profile for the signed-in user (uid).
-// Returns profile = null while loading; otherwise the live profile object.
+// Per-user device cache so onboarding/progress survives even if the cloud is
+// temporarily unreachable (offline, rules not published yet, etc.).
+function cacheKey(uid) {
+  return `sunny.profile.${uid}`
+}
+function readCache(uid) {
+  try {
+    const raw = localStorage.getItem(cacheKey(uid))
+    return raw ? { ...defaultProfile, ...JSON.parse(raw) } : null
+  } catch {
+    return null
+  }
+}
+function writeCache(uid, p) {
+  try {
+    localStorage.setItem(cacheKey(uid), JSON.stringify(p))
+  } catch {
+    /* storage full / unavailable — ignore */
+  }
+}
+
+// Firestore-backed profile for the signed-in user (uid), with a local cache.
+// Returns profile = null only while we have nothing to show yet.
 export function useProfile(uid) {
   const [profile, setProfile] = useState(null)
 
@@ -55,29 +77,43 @@ export function useProfile(uid) {
     }
     let active = true
     const ref = doc(db, 'users', uid)
+
+    // 1) show this device's cached profile instantly (prevents re-onboarding flashes)
+    const cached = readCache(uid)
+    if (cached) setProfile(cached)
+
+    // 2) sync with the cloud
     getDoc(ref)
       .then((snap) => {
         if (!active) return
         if (snap.exists()) {
-          setProfile({ ...defaultProfile, ...snap.data() })
+          const p = { ...defaultProfile, ...snap.data() }
+          setProfile(p)
+          writeCache(uid, p)
         } else {
-          // first sign-in: migrate any local progress, then create the doc
-          const local = loadLocal()
-          const init = local?.onboarded ? { ...defaultProfile, ...local } : { ...defaultProfile }
+          // no cloud doc yet: keep cached progress, else migrate old localStorage
+          const base = cached || loadLegacy()
+          const init = base?.onboarded ? { ...defaultProfile, ...base } : { ...defaultProfile }
           setProfile(init)
+          writeCache(uid, init)
           setDoc(ref, init).catch(() => {})
-          if (local) localStorage.removeItem(KEY)
+          localStorage.removeItem(KEY)
         }
       })
-      .catch(() => active && setProfile({ ...defaultProfile }))
+      .catch(() => {
+        // offline or read denied: keep cached profile; only default if nothing cached
+        if (active && !cached) setProfile({ ...defaultProfile })
+      })
+
     return () => {
       active = false
     }
   }, [uid])
 
-  // debounced save to Firestore on every change
+  // persist: cache immediately (reliable), debounce the cloud write
   useEffect(() => {
     if (!uid || !profile) return
+    writeCache(uid, profile)
     const t = setTimeout(() => {
       setDoc(doc(db, 'users', uid), profile, { merge: true }).catch(() => {})
     }, 600)
