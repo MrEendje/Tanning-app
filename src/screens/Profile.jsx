@@ -1,8 +1,11 @@
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 import Sunny from '../components/Sunny'
 import { BADGES } from '../lib/store'
 import { skinType } from '../lib/uv'
+import { sound } from '../lib/sound'
 
 const GOALS = {
   glow: 'Mooie glow',
@@ -10,10 +13,11 @@ const GOALS = {
   maintain: 'Onderhouden',
 }
 
-export default function Profile({ profile, tab, setTab, onReset, onToggleSound }) {
+export default function Profile({ profile, email, tab, setTab, onReset, onToggleSound, onLogout }) {
   const soundOn = profile.sound !== false
   const st = skinType(profile.skinId)
   const allBadges = Object.keys(BADGES)
+  const [confirm, setConfirm] = useState(false)
 
   return (
     <div className="h-full bg-sun-soft flex flex-col">
@@ -89,14 +93,79 @@ export default function Profile({ profile, tab, setTab, onReset, onToggleSound }
           })}
         </div>
 
+        {/* account */}
+        <div className="glass rounded-2xl p-4 mt-6 flex items-center justify-between">
+          <div className="min-w-0">
+            <p className="text-xs text-taupe font-semibold">Ingelogd als</p>
+            <p className="font-display font-bold text-cocoa truncate">{email || 'Onbekend'}</p>
+          </div>
+          <button
+            onClick={onLogout}
+            className="shrink-0 rounded-xl bg-white/80 px-4 py-2 text-sm font-bold text-sun-action active:scale-95 transition"
+          >
+            Uitloggen
+          </button>
+        </div>
+
         <button
-          onClick={onReset}
-          className="w-full text-center text-taupe text-sm mt-8 font-semibold underline"
+          onClick={() => {
+            sound.tap()
+            setConfirm(true)
+          }}
+          className="w-full text-center text-taupe text-sm mt-6 font-semibold underline"
         >
           Profiel resetten (opnieuw onboarden)
         </button>
       </div>
       <BottomNav tab={tab} setTab={setTab} />
+
+      {/* reset confirmation */}
+      <AnimatePresence>
+        {confirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-40 bg-black/40 backdrop-blur-sm flex items-center justify-center p-6"
+            onClick={() => setConfirm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.85, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.85, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-cream rounded-[2rem] p-7 w-full text-center shadow-2xl"
+            >
+              <div className="text-5xl">⚠️</div>
+              <h2 className="font-display text-xl font-extrabold text-cocoa mt-3">Weet je het zeker?</h2>
+              <p className="text-sm text-taupe mt-2">
+                Hiermee wis je je hele profiel: huidtype, streak, XP, badges, sessies en zelfbruiner.
+                Dit kan niet ongedaan worden gemaakt.
+              </p>
+              <div className="flex flex-col gap-3 mt-6">
+                <button
+                  onClick={() => {
+                    setConfirm(false)
+                    onReset()
+                  }}
+                  className="btn-primary w-full bg-[#FF5E5E]"
+                >
+                  Ja, alles wissen
+                </button>
+                <button
+                  onClick={() => {
+                    sound.back()
+                    setConfirm(false)
+                  }}
+                  className="btn-ghost w-full"
+                >
+                  Annuleren
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

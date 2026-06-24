@@ -14,7 +14,6 @@ export default function Session({ uv, minutes, safeMin, typeName = 'Zon-sessie',
   const safeSec = Math.min(limitSec, Math.max(30, (safeMin ?? minutes) * 60))
   const canBurn = safeSec < limitSec - 1 // this type pushes past the safe limit
   const [elapsed, setElapsed] = useState(0)
-  const [speed, setSpeed] = useState(8) // demo: 8x. Set to 1 for real-time.
   const [side, setSide] = useState('voorkant')
   const [toast, setToast] = useState(null)
   const [paused, setPaused] = useState(false)
@@ -26,11 +25,32 @@ export default function Session({ uv, minutes, safeMin, typeName = 'Zon-sessie',
   const flipPoints = [Math.round(limitSec / 3), Math.round((2 * limitSec) / 3)]
   const screenPoint = Math.min(limitSec * 0.66, 2 * 3600) // reapply ~2h or 2/3 in
 
+  // keep the screen awake during a session (best-effort; not on every browser)
+  useEffect(() => {
+    let lock = null
+    const request = async () => {
+      try {
+        if ('wakeLock' in navigator) lock = await navigator.wakeLock.request('screen')
+      } catch {
+        /* ignored — feature not available or denied */
+      }
+    }
+    request()
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') request()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      if (lock) lock.release().catch(() => {})
+    }
+  }, [])
+
   useEffect(() => {
     if (paused) return
     const t = setInterval(() => {
       setElapsed((e) => {
-        const ne = e + speed
+        const ne = e + 1
         // flip reminders
         flipPoints.forEach((p) => {
           if (ne >= p && !flipAt.current.has(p)) {
@@ -61,7 +81,7 @@ export default function Session({ uv, minutes, safeMin, typeName = 'Zon-sessie',
       })
     }, 1000)
     return () => clearInterval(t)
-  }, [paused, speed])
+  }, [paused])
 
   const pct = Math.min(elapsed / limitSec, 1)
   const remaining = Math.max(0, limitSec - elapsed)
@@ -95,12 +115,7 @@ export default function Session({ uv, minutes, safeMin, typeName = 'Zon-sessie',
           ✕
         </button>
         <span className="font-display font-bold truncate max-w-[150px]">{typeName}</span>
-        <button
-          onClick={() => setSpeed((s) => (s === 1 ? 8 : 1))}
-          className="text-xs rounded-full bg-white/15 px-3 py-1 font-semibold"
-        >
-          {speed}× demo
-        </button>
+        <span className="w-6" />
       </div>
 
       {/* ring */}

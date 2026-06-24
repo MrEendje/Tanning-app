@@ -1,0 +1,27 @@
+rules_version = '2';
+
+// Sunny — Tan Coach security rules.
+// Each user may only read and write their OWN profile document at users/{uid}.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /users/{uid} {
+      // Must be signed in and own the document.
+      allow read: if request.auth != null && request.auth.uid == uid;
+
+      // On create/update: must own it AND the document id must match the auth uid.
+      allow create, update: if request.auth != null
+        && request.auth.uid == uid;
+
+      // No client-side deletes of profile docs.
+      allow delete: if false;
+
+      // (Optional) future per-user subcollections inherit the same ownership rule.
+      match /{document=**} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
+    }
+
+    // Everything else is denied by default.
+  }
+}

@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import PhoneFrame from './components/PhoneFrame'
 import BottomNav from './components/BottomNav'
 import Onboarding from './screens/Onboarding'
+import Login from './screens/Login'
 import Home from './screens/Home'
 import Forecast from './screens/Forecast'
 import SessionSetup from './screens/SessionSetup'
@@ -14,9 +15,45 @@ import Sunny from './components/Sunny'
 import { useProfile, completeSession, BADGES } from './lib/store'
 import { sound, setSoundEnabled } from './lib/sound'
 import { sessionType } from './lib/sessions'
+import { useAuth, logout } from './lib/auth'
+import { initAnalytics } from './lib/firebase'
 
+// Auth gate: decide between loading / login / the actual app.
 export default function App() {
-  const { profile, update, addXp, reset } = useProfile()
+  const user = useAuth()
+
+  useEffect(() => {
+    initAnalytics()
+  }, [])
+
+  if (user === undefined) {
+    return (
+      <PhoneFrame>
+        <Splash text="Even laden…" />
+      </PhoneFrame>
+    )
+  }
+  if (!user) {
+    return (
+      <PhoneFrame>
+        <Login />
+      </PhoneFrame>
+    )
+  }
+  return <AuthedApp user={user} />
+}
+
+function Splash({ text }) {
+  return (
+    <div className="h-full bg-sun-soft flex flex-col items-center justify-center gap-4">
+      <Sunny mood="calm" size={110} />
+      <p className="text-taupe font-semibold">{text}</p>
+    </div>
+  )
+}
+
+function AuthedApp({ user }) {
+  const { profile, update, addXp, reset } = useProfile(user.uid)
   const [tab, setTab] = useState('home')
   const [setup, setSetup] = useState(null) // { uv, safeMin } — choosing a session type
   const [session, setSession] = useState(null) // active session
@@ -25,8 +62,8 @@ export default function App() {
 
   // keep the sound engine in sync with the user's preference
   useEffect(() => {
-    setSoundEnabled(profile.sound !== false)
-  }, [profile.sound])
+    setSoundEnabled(profile?.sound !== false)
+  }, [profile?.sound])
 
   // celebrate with sound when a reward appears
   useEffect(() => {
@@ -56,6 +93,14 @@ export default function App() {
     setSession(null)
     setTab('home')
     setReward({ xp, minutes, badges: earned, burned, caution: patch.caution })
+  }
+
+  if (!profile) {
+    return (
+      <PhoneFrame>
+        <Splash text="Profiel laden…" />
+      </PhoneFrame>
+    )
   }
 
   if (!profile.onboarded) {
@@ -129,6 +174,7 @@ export default function App() {
           {tab === 'profile' && (
             <Profile
               profile={profile}
+              email={user.email}
               tab={tab}
               setTab={setTab}
               onToggleSound={() => {
@@ -141,6 +187,10 @@ export default function App() {
                 sound.back()
                 reset()
                 setTab('home')
+              }}
+              onLogout={() => {
+                sound.back()
+                logout()
               }}
             />
           )}

@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
+import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { db } from './firebase'
 
 const KEY = 'sunny.profile.v1'
 
@@ -29,29 +31,66 @@ export function nextCaution(profile, burned) {
 
 export const XP_PER_LEVEL = 100
 
-function load() {
+// Old localStorage profile (used once to migrate existing progress into the cloud).
+function loadLocal() {
   try {
     const raw = localStorage.getItem(KEY)
-    if (!raw) return { ...defaultProfile }
+    if (!raw) return null
     return { ...defaultProfile, ...JSON.parse(raw) }
   } catch {
-    return { ...defaultProfile }
+    return null
   }
 }
 
-export function useProfile() {
-  const [profile, setProfile] = useState(load)
+// Firestore-backed profile for the signed-in user (uid).
+// Returns profile = null while loading; otherwise the live profile object.
+export function useProfile(uid) {
+  const [profile, setProfile] = useState(null)
 
+  // load (or create) the user's document
   useEffect(() => {
-    localStorage.setItem(KEY, JSON.stringify(profile))
-  }, [profile])
+    if (!uid) {
+      setProfile(null)
+      return
+    }
+    let active = true
+    const ref = doc(db, 'users', uid)
+    getDoc(ref)
+      .then((snap) => {
+        if (!active) return
+        if (snap.exists()) {
+          setProfile({ ...defaultProfile, ...snap.data() })
+        } else {
+          // first sign-in: migrate any local progress, then create the doc
+          const local = loadLocal()
+          const init = local?.onboarded ? { ...defaultProfile, ...local } : { ...defaultProfile }
+          setProfile(init)
+          setDoc(ref, init).catch(() => {})
+          if (local) localStorage.removeItem(KEY)
+        }
+      })
+      .catch(() => active && setProfile({ ...defaultProfile }))
+    return () => {
+      active = false
+    }
+  }, [uid])
+
+  // debounced save to Firestore on every change
+  useEffect(() => {
+    if (!uid || !profile) return
+    const t = setTimeout(() => {
+      setDoc(doc(db, 'users', uid), profile, { merge: true }).catch(() => {})
+    }, 600)
+    return () => clearTimeout(t)
+  }, [uid, profile])
 
   const update = useCallback((patch) => {
-    setProfile((p) => ({ ...p, ...(typeof patch === 'function' ? patch(p) : patch) }))
+    setProfile((p) => (p ? { ...p, ...(typeof patch === 'function' ? patch(p) : patch) } : p))
   }, [])
 
   const addXp = useCallback((amount) => {
     setProfile((p) => {
+      if (!p) return p
       const xp = p.xp + amount
       const level = Math.floor(xp / XP_PER_LEVEL) + 1
       return { ...p, xp, level }
