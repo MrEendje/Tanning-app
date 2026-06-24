@@ -1,0 +1,15 @@
+# Netlify build configuration for Sunny — Tan Coach (Vite + React SPA)
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  # Pin a modern Node and make sure dev/build tooling installs in production builds.
+  NODE_VERSION = "20"
+  NPM_FLAGS = "--include=dev"
+
+# SPA fallback: serve index.html for any route so deep links / refreshes don't 404.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
