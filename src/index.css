@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+  color: #3a2a20;
+  background: #2a1c14;
+  overscroll-behavior: none;
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/80 backdrop-blur-xl border border-white/60 shadow-glass;
+  }
+  .btn-primary {
+    @apply rounded-2xl bg-sun-action text-white font-display font-semibold
+      py-4 text-lg shadow-soft active:scale-[0.97] transition-transform;
+  }
+  .btn-ghost {
+    @apply rounded-2xl bg-white/70 text-cocoa font-display font-semibold
+      py-4 text-lg active:scale-[0.97] transition-transform;
+  }
+}
+
+/* hide scrollbars inside the phone frame */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
