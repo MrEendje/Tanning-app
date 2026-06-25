@@ -4,6 +4,7 @@
 let ctx = null
 let master = null
 let enabled = true
+let primed = false
 
 function ensureCtx() {
   if (typeof window === 'undefined') return null
@@ -18,6 +19,37 @@ function ensureCtx() {
   // browsers suspend audio until a user gesture
   if (ctx.state === 'suspended') ctx.resume()
   return ctx
+}
+
+// Mobile (esp. iOS) keeps audio locked until it's started inside a real touch
+// gesture. We unlock it on the very first interaction with a silent buffer so
+// every later sound plays instantly, with no resume delay.
+function unlockAudio() {
+  const c = ensureCtx()
+  if (!c) return
+  if (c.state === 'suspended') c.resume()
+  if (!primed) {
+    try {
+      const buffer = c.createBuffer(1, 1, 22050)
+      const src = c.createBufferSource()
+      src.buffer = buffer
+      src.connect(c.destination)
+      src.start(0)
+      primed = true
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+if (typeof window !== 'undefined') {
+  // Prime on the first gesture; keep resuming on later ones (mobile re-suspends).
+  const events = ['pointerdown', 'touchstart', 'touchend', 'mousedown', 'keydown']
+  const onGesture = () => unlockAudio()
+  events.forEach((e) => window.addEventListener(e, onGesture, { passive: true }))
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && ctx && ctx.state === 'suspended') ctx.resume()
+  })
 }
 
 export function setSoundEnabled(v) {
